@@ -1,6 +1,38 @@
 create extension if not exists pgcrypto;
 
-create table if not exists public.wardrobe_items (
+-- ─── profiles ────────────────────────────────────────────────────────────────
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  name text not null default '',
+  gender text not null default 'Woman',
+  height text,
+  body_shape text,
+  skin_tone text,
+  style_preferences text[] not null default '{}',
+  occasion_preference text not null default 'office-heavy',
+  onboarding_completed boolean not null default false,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.profiles enable row level security;
+
+create policy "Users can view their own profile"
+on public.profiles for select to authenticated
+using ((select auth.uid()) = id);
+
+create policy "Users can insert their own profile"
+on public.profiles for insert to authenticated
+with check ((select auth.uid()) = id);
+
+create policy "Users can update their own profile"
+on public.profiles for update to authenticated
+using ((select auth.uid()) = id)
+with check ((select auth.uid()) = id);
+
+-- ─── wardrobe_items ───────────────────────────────────────────────────────────
+
   id uuid primary key default gen_random_uuid(),
   user_id uuid default auth.uid() references auth.users (id) on delete cascade,
   name text not null,

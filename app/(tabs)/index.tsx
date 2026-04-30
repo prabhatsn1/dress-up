@@ -1,27 +1,56 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import * as Haptics from "expo-haptics";
+import { useEffect, useRef, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { AppCard, Chip, ColorSwatch, MetricCard, SectionTitle } from '@/components/wardrobe-ui';
-import { Fonts } from '@/constants/theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { generateAiStylistRecommendation, type AiStylistRecommendation } from '@/lib/ai';
+import {
+  AppCard,
+  Chip,
+  ColorSwatch,
+  MetricCard,
+  SectionTitle,
+} from "@/components/wardrobe-ui";
+import { Fonts } from "@/constants/theme";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import {
+  generateAiStylistRecommendation,
+  type AiStylistRecommendation,
+} from "@/lib/ai";
 import {
   buildGapInsights,
   buildRecommendations,
   buildWeeklyPlan,
-  userProfile,
   type OccasionType,
-} from '@/lib/wardrobe';
-import { useAppData } from '@/providers/app-data-provider';
+} from "@/lib/wardrobe";
+import { useAppData } from "@/providers/app-data-provider";
 
-const occasions: OccasionType[] = ['Office', 'Party', 'Date', 'Wedding', 'Casual', 'Gym', 'Travel'];
-const dayParts = ['Morning', 'Afternoon', 'Evening'] as const;
+const occasions: OccasionType[] = [
+  "Office",
+  "Party",
+  "Date",
+  "Wedding",
+  "Casual",
+  "Gym",
+  "Travel",
+];
+const dayParts = ["Morning", "Afternoon", "Evening"] as const;
 
 export default function TodayScreen() {
-  const [occasion, setOccasion] = useState<OccasionType>('Office');
-  const [feedback, setFeedback] = useState<string | null>('Like');
-  const [aiStylist, setAiStylist] = useState<AiStylistRecommendation | null>(null);
+  const [occasion, setOccasion] = useState<OccasionType>("Office");
+  const [feedback, setFeedback] = useState<string | null>("Like");
+  const [wornToday, setWornToday] = useState(false);
+  const [wornConfirmation, setWornConfirmation] = useState<string | null>(null);
+  const wornTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [aiStylist, setAiStylist] = useState<AiStylistRecommendation | null>(
+    null,
+  );
   const [isAiStylistLoading, setIsAiStylistLoading] = useState(false);
   const [aiStylistError, setAiStylistError] = useState<string | null>(null);
   const {
@@ -33,20 +62,24 @@ export default function TodayScreen() {
     wardrobeSource,
     supabaseConfigured,
     lastSyncMessage,
+    markOutfitWorn,
+    profile,
   } = useAppData();
-  const [dayPart, setDayPart] = useState<(typeof dayParts)[number]>(weather.dayPart);
+  const [dayPart, setDayPart] = useState<(typeof dayParts)[number]>(
+    weather.dayPart,
+  );
 
   useEffect(() => {
     setDayPart(weather.dayPart);
   }, [weather.dayPart]);
 
-  const background = useThemeColor({}, 'background');
-  const text = useThemeColor({}, 'text');
-  const muted = useThemeColor({}, 'muted');
-  const border = useThemeColor({}, 'border');
-  const warm = useThemeColor({}, 'accentWarm');
-  const cool = useThemeColor({}, 'accentCool');
-  const success = useThemeColor({}, 'success');
+  const background = useThemeColor({}, "background");
+  const text = useThemeColor({}, "text");
+  const muted = useThemeColor({}, "muted");
+  const border = useThemeColor({}, "border");
+  const warm = useThemeColor({}, "accentWarm");
+  const cool = useThemeColor({}, "accentCool");
+  const success = useThemeColor({}, "success");
 
   const context = {
     occasion,
@@ -55,78 +88,119 @@ export default function TodayScreen() {
       dayPart,
     },
   };
-  const recommendations = buildRecommendations(items, userProfile, context);
+  const recommendations = buildRecommendations(items, profile, context);
   const heroOutfit = recommendations[0];
+  const primaryItemIds = heroOutfit?.items.map((item) => item.id) ?? [];
   const backupOutfits = recommendations.slice(1, 4);
-  const weeklyPlan = buildWeeklyPlan(items, userProfile, weather);
+  const weeklyPlan = buildWeeklyPlan(items, profile, weather);
   const tomorrow = weeklyPlan[1];
   const insights = buildGapInsights(items);
   const itemMap = new Map(items.map((item) => [item.id, item]));
   const aiPrimaryItems =
-    aiStylist?.primaryItemIds.map((itemId) => itemMap.get(itemId)?.name).filter(Boolean) ?? [];
+    aiStylist?.primaryItemIds
+      .map((itemId) => itemMap.get(itemId)?.name)
+      .filter(Boolean) ?? [];
 
   return (
-    <ScrollView style={[styles.screen, { backgroundColor: background }]} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.screen, { backgroundColor: background }]}
+      contentContainerStyle={styles.content}
+    >
       <SectionTitle
         eyebrow="AI Wardrobe Expo"
-        title={`Good ${dayPart.toLowerCase()}, ${userProfile.name.split(' ')[0]}.`}
+        title={`Good ${dayPart.toLowerCase()}, ${profile.name.split(" ")[0]}.`}
         detail="Personal, weather-aware outfit picks built from your real closet."
       />
 
       <AppCard accent={warm}>
         <View style={styles.heroRow}>
           <View style={styles.heroHeading}>
-            <Text style={[styles.heroTitle, { color: text }]}>What should I wear today?</Text>
+            <Text style={[styles.heroTitle, { color: text }]}>
+              What should I wear today?
+            </Text>
             <Text style={[styles.heroMeta, { color: muted }]}>
-              {context.weather.location} · {context.weather.temperatureC}C · {context.weather.condition}
+              {context.weather.location} · {context.weather.temperatureC}C ·{" "}
+              {context.weather.condition}
             </Text>
             <Text style={[styles.weatherSource, { color: muted }]}>
               {isWeatherLoading
-                ? 'Refreshing live weather...'
-                : `Live weather via ${context.weather.source ?? 'provider'}${context.weather.lastUpdated ? ` · ${context.weather.lastUpdated}` : ''}`}
+                ? "Refreshing live weather..."
+                : `Live weather via ${context.weather.source ?? "provider"}${context.weather.lastUpdated ? ` · ${context.weather.lastUpdated}` : ""}`}
             </Text>
           </View>
           <View style={[styles.confidenceBadge, { backgroundColor: success }]}>
-            <Text style={styles.confidenceText}>{heroOutfit.confidence}% match</Text>
+            <Text style={styles.confidenceText}>
+              {heroOutfit.confidence}% match
+            </Text>
           </View>
         </View>
 
         <View style={styles.utilityRow}>
           <Text style={[styles.utilityText, { color: muted }]}>
-            Closet source: {wardrobeSource === 'supabase' ? 'Supabase' : 'Local wardrobe'}
+            Closet source:{" "}
+            {wardrobeSource === "supabase" ? "Supabase" : "Local wardrobe"}
           </Text>
           <Pressable onPress={() => void refreshWeather()}>
-            <Text style={[styles.utilityLink, { color: cool }]}>Refresh weather</Text>
+            <Text style={[styles.utilityLink, { color: cool }]}>
+              Refresh weather
+            </Text>
           </Pressable>
         </View>
-        {weatherError ? <Text style={[styles.inlineNotice, { color: warm }]}>{weatherError}</Text> : null}
-        {lastSyncMessage ? <Text style={[styles.inlineNotice, { color: muted }]}>{lastSyncMessage}</Text> : null}
+        {weatherError ? (
+          <Text style={[styles.inlineNotice, { color: warm }]}>
+            {weatherError}
+          </Text>
+        ) : null}
+        {lastSyncMessage ? (
+          <Text style={[styles.inlineNotice, { color: muted }]}>
+            {lastSyncMessage}
+          </Text>
+        ) : null}
 
         <View style={styles.chipRow}>
           {occasions.map((value) => (
-            <Chip key={value} label={value} active={value === occasion} onPress={() => setOccasion(value)} />
+            <Chip
+              key={value}
+              label={value}
+              active={value === occasion}
+              onPress={() => setOccasion(value)}
+            />
           ))}
         </View>
 
         <View style={styles.chipRow}>
           {dayParts.map((value) => (
-            <Chip key={value} label={value} active={value === dayPart} onPress={() => setDayPart(value)} />
+            <Chip
+              key={value}
+              label={value}
+              active={value === dayPart}
+              onPress={() => setDayPart(value)}
+            />
           ))}
         </View>
 
         <View style={[styles.outfitPanel, { borderColor: border }]}>
-          <Text style={[styles.outfitName, { color: text }]}>{heroOutfit.name}</Text>
-          <Text style={[styles.outfitNote, { color: muted }]}>{heroOutfit.note}</Text>
+          <Text style={[styles.outfitName, { color: text }]}>
+            {heroOutfit.name}
+          </Text>
+          <Text style={[styles.outfitNote, { color: muted }]}>
+            {heroOutfit.note}
+          </Text>
           <View style={styles.itemList}>
             {heroOutfit.items.map((item) => (
-              <View key={item.id} style={[styles.itemPill, { borderColor: border }]}>
+              <View
+                key={item.id}
+                style={[styles.itemPill, { borderColor: border }]}
+              >
                 <View style={styles.swatchRow}>
                   {item.colours.map((colour) => (
                     <ColorSwatch key={`${item.id}-${colour}`} colour={colour} />
                   ))}
                 </View>
                 <View style={styles.itemCopy}>
-                  <Text style={[styles.itemName, { color: text }]}>{item.name}</Text>
+                  <Text style={[styles.itemName, { color: text }]}>
+                    {item.name}
+                  </Text>
                   <Text style={[styles.itemMeta, { color: muted }]}>
                     {item.subcategory} · {item.fit} fit · {item.pattern}
                   </Text>
@@ -134,7 +208,12 @@ export default function TodayScreen() {
               </View>
             ))}
             {heroOutfit.accessorySuggestion ? (
-              <View style={[styles.accessoryPanel, { backgroundColor: `${cool}1A` }]}>
+              <View
+                style={[
+                  styles.accessoryPanel,
+                  { backgroundColor: `${cool}1A` },
+                ]}
+              >
                 <MaterialIcons name="auto-fix-high" size={18} color={cool} />
                 <Text style={[styles.accessoryText, { color: text }]}>
                   Add {heroOutfit.accessorySuggestion.name} for a finished look.
@@ -145,9 +224,51 @@ export default function TodayScreen() {
         </View>
       </AppCard>
 
+      <TouchableOpacity
+        style={[
+          styles.wornButton,
+          { backgroundColor: wornToday ? success : cool },
+          (wornToday || primaryItemIds.length === 0) &&
+            styles.wornButtonDisabled,
+        ]}
+        onPress={async () => {
+          if (wornToday || primaryItemIds.length === 0) return;
+          await markOutfitWorn(primaryItemIds);
+          setWornToday(true);
+          setWornConfirmation("Outfit logged! Your stats have been updated.");
+          void Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success,
+          );
+          if (wornTimeoutRef.current) clearTimeout(wornTimeoutRef.current);
+          wornTimeoutRef.current = setTimeout(
+            () => setWornConfirmation(null),
+            2000,
+          );
+        }}
+        disabled={wornToday || primaryItemIds.length === 0}
+        activeOpacity={0.75}
+      >
+        <Text style={styles.wornButtonText}>
+          {wornToday ? "✓ Logged for today" : "✓ I wore this today"}
+        </Text>
+      </TouchableOpacity>
+      {wornConfirmation ? (
+        <Text style={[styles.wornConfirmation, { color: success }]}>
+          {wornConfirmation}
+        </Text>
+      ) : null}
+
       <View style={styles.metricRow}>
-        <MetricCard label="Suggestions" value={`${recommendations.length}`} tone={warm} />
-        <MetricCard label="Rain Risk" value={`${context.weather.rainChance}%`} tone={cool} />
+        <MetricCard
+          label="Suggestions"
+          value={`${recommendations.length}`}
+          tone={warm}
+        />
+        <MetricCard
+          label="Rain Risk"
+          value={`${context.weather.rainChance}%`}
+          tone={cool}
+        />
         <MetricCard
           label="Feels Like"
           value={`${context.weather.feelsLikeC ?? context.weather.temperatureC}C`}
@@ -161,7 +282,9 @@ export default function TodayScreen() {
           <Pressable
             onPress={async () => {
               if (!supabaseConfigured) {
-                setAiStylistError('Supabase must be configured before the AI stylist can run.');
+                setAiStylistError(
+                  "Supabase must be configured before the AI stylist can run.",
+                );
                 return;
               }
 
@@ -173,41 +296,64 @@ export default function TodayScreen() {
                   items,
                   occasion,
                   weather: context.weather,
+                  profile,
                 });
                 setAiStylist(result);
               } catch (error) {
                 setAiStylistError(
-                  error instanceof Error ? `AI stylist failed. ${error.message}` : 'AI stylist failed.'
+                  error instanceof Error
+                    ? `AI stylist failed. ${error.message}`
+                    : "AI stylist failed.",
                 );
               } finally {
                 setIsAiStylistLoading(false);
               }
-            }}>
+            }}
+          >
             <Text style={[styles.utilityLink, { color: cool }]}>
-              {isAiStylistLoading ? 'Running...' : 'Run AI stylist'}
+              {isAiStylistLoading ? "Running..." : "Run AI stylist"}
             </Text>
           </Pressable>
         </View>
         <Text style={[styles.reasonText, { color: muted }]}>
-          OpenAI generates structured outfit reasoning from your closet, weather, and occasion. Hugging Face
-          improves item metadata before the stylist sees it.
+          OpenAI generates structured outfit reasoning from your closet,
+          weather, and occasion. Hugging Face improves item metadata before the
+          stylist sees it.
         </Text>
-        {aiStylistError ? <Text style={[styles.inlineNotice, { color: warm }]}>{aiStylistError}</Text> : null}
+        {aiStylistError ? (
+          <Text style={[styles.inlineNotice, { color: warm }]}>
+            {aiStylistError}
+          </Text>
+        ) : null}
         {aiStylist ? (
           <View style={styles.aiStylistPanel}>
             <View style={styles.sectionRow}>
-              <Text style={[styles.backupTitle, { color: text }]}>{aiStylist.headline}</Text>
-              <Text style={[styles.backupScore, { color: muted }]}>{aiStylist.confidence}%</Text>
+              <Text style={[styles.backupTitle, { color: text }]}>
+                {aiStylist.headline}
+              </Text>
+              <Text style={[styles.backupScore, { color: muted }]}>
+                {aiStylist.confidence}%
+              </Text>
             </View>
-            <Text style={[styles.reasonText, { color: muted }]}>{aiStylist.summary}</Text>
+            <Text style={[styles.reasonText, { color: muted }]}>
+              {aiStylist.summary}
+            </Text>
             <Text style={[styles.aiPrimary, { color: text }]}>
-              {aiPrimaryItems.length > 0 ? aiPrimaryItems.join(' · ') : 'AI returned item ids not present locally.'}
+              {aiPrimaryItems.length > 0
+                ? aiPrimaryItems.join(" · ")
+                : "AI returned item ids not present locally."}
             </Text>
             <View style={styles.reasonList}>
               {aiStylist.reasons.map((reason) => (
                 <View key={reason} style={styles.reasonRow}>
-                  <MaterialIcons name="auto-awesome" size={18} color={success} />
-                  <Text style={[styles.reasonText, { color: muted }]}>{reason}</Text>
+                  <MaterialIcons
+                    name="auto-awesome"
+                    size={18}
+                    color={success}
+                  />
+                  <Text style={[styles.reasonText, { color: muted }]}>
+                    {reason}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -216,7 +362,9 @@ export default function TodayScreen() {
                 Accessory suggestion: {aiStylist.accessorySuggestion}
               </Text>
             ) : null}
-            <Text style={[styles.stylistNote, { color: muted }]}>{aiStylist.stylistNote}</Text>
+            <Text style={[styles.stylistNote, { color: muted }]}>
+              {aiStylist.stylistNote}
+            </Text>
           </View>
         ) : null}
       </AppCard>
@@ -227,33 +375,53 @@ export default function TodayScreen() {
           {heroOutfit.reasons.map((reason) => (
             <View key={reason} style={styles.reasonRow}>
               <MaterialIcons name="done" size={18} color={cool} />
-              <Text style={[styles.reasonText, { color: muted }]}>{reason}</Text>
+              <Text style={[styles.reasonText, { color: muted }]}>
+                {reason}
+              </Text>
             </View>
           ))}
         </View>
 
         <Text style={[styles.subheading, { color: text }]}>Feedback loop</Text>
         <View style={styles.chipRow}>
-          {['Like', 'Too formal', 'Colour miss', 'Not my style'].map((label) => (
-            <Chip key={label} label={label} active={feedback === label} onPress={() => setFeedback(label)} />
-          ))}
+          {["Like", "Too formal", "Colour miss", "Not my style"].map(
+            (label) => (
+              <Chip
+                key={label}
+                label={label}
+                active={feedback === label}
+                onPress={() => setFeedback(label)}
+              />
+            ),
+          )}
         </View>
       </AppCard>
 
       <AppCard>
         <View style={styles.sectionRow}>
-          <Text style={[styles.subheading, { color: text }]}>Backup options</Text>
-          <Text style={[styles.microLabel, { color: muted }]}>2 to 5 ranked recommendations</Text>
+          <Text style={[styles.subheading, { color: text }]}>
+            Backup options
+          </Text>
+          <Text style={[styles.microLabel, { color: muted }]}>
+            2 to 5 ranked recommendations
+          </Text>
         </View>
         <View style={styles.backupList}>
           {backupOutfits.map((outfit) => (
-            <View key={outfit.id} style={[styles.backupCard, { borderColor: border }]}>
+            <View
+              key={outfit.id}
+              style={[styles.backupCard, { borderColor: border }]}
+            >
               <View style={styles.sectionRow}>
-                <Text style={[styles.backupTitle, { color: text }]}>{outfit.name}</Text>
-                <Text style={[styles.backupScore, { color: muted }]}>{outfit.confidence}%</Text>
+                <Text style={[styles.backupTitle, { color: text }]}>
+                  {outfit.name}
+                </Text>
+                <Text style={[styles.backupScore, { color: muted }]}>
+                  {outfit.confidence}%
+                </Text>
               </View>
               <Text style={[styles.backupItems, { color: muted }]}>
-                {outfit.items.map((item) => item.name).join(' · ')}
+                {outfit.items.map((item) => item.name).join(" · ")}
               </Text>
             </View>
           ))}
@@ -262,27 +430,38 @@ export default function TodayScreen() {
 
       <AppCard accent={warm}>
         <View style={styles.sectionRow}>
-          <Text style={[styles.subheading, { color: text }]}>Tomorrow preview</Text>
-          <Text style={[styles.microLabel, { color: muted }]}>{tomorrow.day}</Text>
+          <Text style={[styles.subheading, { color: text }]}>
+            Tomorrow preview
+          </Text>
+          <Text style={[styles.microLabel, { color: muted }]}>
+            {tomorrow.day}
+          </Text>
         </View>
         <Text style={[styles.tomorrowTitle, { color: text }]}>
           {tomorrow.context.occasion} · {tomorrow.outfit.name}
         </Text>
         <Text style={[styles.tomorrowMeta, { color: muted }]}>
-          {tomorrow.context.weather.temperatureC}C · {tomorrow.context.weather.condition} · avoids repeating
-          today&apos;s lead pieces
+          {tomorrow.context.weather.temperatureC}C ·{" "}
+          {tomorrow.context.weather.condition} · avoids repeating today&apos;s
+          lead pieces
         </Text>
       </AppCard>
 
       <AppCard>
-        <Text style={[styles.subheading, { color: text }]}>Wardrobe gap detection</Text>
+        <Text style={[styles.subheading, { color: text }]}>
+          Wardrobe gap detection
+        </Text>
         <View style={styles.reasonList}>
           {insights.map((insight) => (
             <View key={insight.title} style={styles.insightRow}>
               <View style={[styles.insightDot, { backgroundColor: warm }]} />
               <View style={styles.insightCopy}>
-                <Text style={[styles.insightTitle, { color: text }]}>{insight.title}</Text>
-                <Text style={[styles.reasonText, { color: muted }]}>{insight.detail}</Text>
+                <Text style={[styles.insightTitle, { color: text }]}>
+                  {insight.title}
+                </Text>
+                <Text style={[styles.reasonText, { color: muted }]}>
+                  {insight.detail}
+                </Text>
               </View>
             </View>
           ))}
@@ -303,10 +482,10 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   heroRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 12,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   heroHeading: {
     flex: 1,
@@ -316,7 +495,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 28,
     fontFamily: Fonts.serif,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   heroMeta: {
     fontSize: 14,
@@ -330,10 +509,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   utilityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   utilityText: {
     flex: 1,
@@ -341,20 +520,20 @@ const styles = StyleSheet.create({
   },
   utilityLink: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   inlineNotice: {
     fontSize: 12,
     lineHeight: 18,
   },
   confidenceText: {
-    color: '#fff8f0',
+    color: "#fff8f0",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   outfitPanel: {
@@ -366,7 +545,7 @@ const styles = StyleSheet.create({
   outfitName: {
     fontSize: 19,
     lineHeight: 24,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   outfitNote: {
     fontSize: 14,
@@ -379,13 +558,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 12,
     gap: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   swatchRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
-    alignItems: 'center',
+    alignItems: "center",
   },
   itemCopy: {
     flex: 1,
@@ -393,7 +572,7 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   itemMeta: {
     fontSize: 13,
@@ -401,9 +580,9 @@ const styles = StyleSheet.create({
   accessoryPanel: {
     borderRadius: 16,
     padding: 12,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   accessoryText: {
     flex: 1,
@@ -411,22 +590,22 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   metricRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   subheading: {
     fontSize: 18,
     lineHeight: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   reasonList: {
     gap: 12,
   },
   reasonRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   reasonText: {
     flex: 1,
@@ -434,15 +613,15 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   sectionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   microLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   backupList: {
@@ -457,11 +636,11 @@ const styles = StyleSheet.create({
   backupTitle: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   backupScore: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   backupItems: {
     fontSize: 13,
@@ -473,16 +652,16 @@ const styles = StyleSheet.create({
   aiPrimary: {
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   stylistNote: {
     fontSize: 13,
     lineHeight: 19,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   tomorrowTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     lineHeight: 22,
   },
   tomorrowMeta: {
@@ -490,9 +669,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   insightRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   insightDot: {
     width: 12,
@@ -506,6 +685,26 @@ const styles = StyleSheet.create({
   },
   insightTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
+  },
+  wornButton: {
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wornButtonDisabled: {
+    opacity: 0.6,
+  },
+  wornButtonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  wornConfirmation: {
+    textAlign: "center",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: -8,
   },
 });
