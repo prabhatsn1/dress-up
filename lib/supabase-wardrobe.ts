@@ -25,6 +25,7 @@ export function mapWardrobeRow(row: WardrobeItemRow): WardrobeItem {
     lastWornDaysAgo: row.last_worn_days_ago,
     wearCount: row.wear_count,
     favorite: row.favorite,
+    isDirty: row.is_dirty ?? false,
     imageUrl: row.image_url ?? undefined,
     imageStoragePath: row.image_storage_path ?? undefined,
     source: "supabase",
@@ -32,6 +33,8 @@ export function mapWardrobeRow(row: WardrobeItemRow): WardrobeItem {
     aiConfidence: row.ai_confidence ?? undefined,
     aiSummary: row.ai_summary ?? undefined,
     aiTags: (row.ai_tags as unknown as WardrobeItem["aiTags"]) ?? undefined,
+    purchasePrice: row.purchase_price ?? undefined,
+    purchaseDate: row.purchase_date ?? undefined,
   };
 }
 
@@ -55,6 +58,7 @@ function mapWardrobeInsert(
     last_worn_days_ago: item.lastWornDaysAgo,
     wear_count: item.wearCount,
     favorite: item.favorite,
+    is_dirty: item.isDirty ?? false,
     image_url: imageUrl ?? null,
     image_storage_path: imageStoragePath ?? null,
     ai_status: item.aiStatus ?? "idle",
@@ -63,6 +67,8 @@ function mapWardrobeInsert(
     ai_tags: item.aiTags
       ? (item.aiTags as unknown as Record<string, unknown>)
       : null,
+    purchase_price: item.purchasePrice ?? null,
+    purchase_date: item.purchaseDate ?? null,
   };
 }
 
