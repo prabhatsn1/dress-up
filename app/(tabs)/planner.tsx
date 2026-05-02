@@ -1,11 +1,16 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { OutfitCalendar } from "@/components/outfit-calendar";
 import { AppCard, ColorSwatch, SectionTitle } from "@/components/wardrobe-ui";
 import { Fonts } from "@/constants/theme";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { getSession } from "@/lib/auth";
 import { buildPackingList, buildWeeklyPlan } from "@/lib/wardrobe";
 import { useAppData } from "@/providers/app-data-provider";
+
+export { RouteErrorBoundary as ErrorBoundary } from "@/components/error-boundary";
 
 export default function PlannerScreen() {
   const background = useThemeColor({}, "background");
@@ -15,6 +20,11 @@ export default function PlannerScreen() {
   const warm = useThemeColor({}, "accentWarm");
   const cool = useThemeColor({}, "accentCool");
   const { items, weather, isWeatherLoading, profile } = useAppData();
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSession().then((s) => setUserId(s?.user.id ?? null));
+  }, []);
 
   const weeklyPlan = buildWeeklyPlan(items, profile, weather);
   const packingList = buildPackingList(weeklyPlan);
@@ -29,6 +39,8 @@ export default function PlannerScreen() {
         title="Plan the week"
         detail="Use AI suggestions to avoid repeats, account for weather, and prep for travel."
       />
+
+      {userId ? <OutfitCalendar userId={userId} items={items} /> : null}
 
       <AppCard accent={cool}>
         <Text style={[styles.heroTitle, { color: text }]}>

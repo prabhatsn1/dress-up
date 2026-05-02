@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -14,9 +13,19 @@ import {
 import { router } from "expo-router";
 
 import { AppCard, Chip, SectionTitle } from "@/components/wardrobe-ui";
+import { BadgeShelf } from "@/components/badge-shelf";
+import { StreakBanner } from "@/components/streak-banner";
 import { WearStats } from "@/components/wear-stats";
 import { Fonts } from "@/constants/theme";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { getSession } from "@/lib/auth";
+import {
+  getColourAnalysis,
+  computeItemPaletteTag,
+  SEASON_SWATCHES,
+  SEASON_META,
+  type ColourAnalysis,
+} from "@/lib/colour-analysis";
 import {
   cancelMorningBriefing,
   getMorningBriefingTime,
@@ -25,7 +34,10 @@ import {
   scheduleMorningBriefing,
   buildBriefingContent,
 } from "@/lib/notifications";
+import { getTopRatedOutfits, type OutfitLog } from "@/lib/outfit-log";
 import { useAppData } from "@/providers/app-data-provider";
+
+export { RouteErrorBoundary as ErrorBoundary } from "@/components/error-boundary";
 
 export default function ProfileScreen() {
   const [localOnly, setLocalOnly] = useState(true);
@@ -37,6 +49,7 @@ export default function ProfileScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pendingHour, setPendingHour] = useState(8);
   const [pendingMinute, setPendingMinute] = useState(0);
+  const [topRatedLogs, setTopRatedLogs] = useState<OutfitLog[]>([]);
 
   const background = useThemeColor({}, "background");
   const text = useThemeColor({}, "text");
@@ -45,6 +58,7 @@ export default function ProfileScreen() {
   const warm = useThemeColor({}, "accentWarm");
   const cool = useThemeColor({}, "accentCool");
   const danger = useThemeColor({}, "danger");
+  const success = useThemeColor({}, "success");
   const {
     supabaseConfigured,
     weather,
@@ -52,7 +66,36 @@ export default function ProfileScreen() {
     lastSyncMessage,
     items,
     profile,
+    gamification,
+    earnedBadgeIds,
   } = useAppData();
+
+  const itemMap = new Map(items.map((i) => [i.id, i]));
+  const colourAnalysis: ColourAnalysis | null = getColourAnalysis(
+    profile.skinTone,
+  );
+  const seasonSwatches = colourAnalysis
+    ? SEASON_SWATCHES[colourAnalysis.palette]
+    : [];
+  const seasonMeta = colourAnalysis
+    ? SEASON_META[colourAnalysis.palette]
+    : null;
+  const paletteMatchCount = colourAnalysis
+    ? items.filter((i) => {
+        const tag = computeItemPaletteTag(i, colourAnalysis);
+        return tag === "best" || tag === "good";
+      }).length
+    : 0;
+
+  useEffect(() => {
+    getSession().then((session) => {
+      const userId = session?.user.id;
+      if (!userId) return;
+      getTopRatedOutfits(userId, 4, 10)
+        .then(setTopRatedLogs)
+        .catch(() => undefined);
+    });
+  }, []);
 
   async function handleNotificationsToggle(value: boolean) {
     if (value) {
@@ -107,6 +150,13 @@ export default function ProfileScreen() {
         title="Profile and privacy"
         detail="Recommendations stay explainable because profile, weather, and feedback signals are all visible."
       />
+
+      <StreakBanner state={gamification} />
+
+      <AppCard>
+        <Text style={[styles.blockTitle, { color: text }]}>Badges</Text>
+        <BadgeShelf earnedBadgeIds={earnedBadgeIds} />
+      </AppCard>
 
       <AppCard accent={warm}>
         <View style={styles.profileHeaderRow}>
@@ -205,6 +255,90 @@ export default function ProfileScreen() {
         </Text>
         <WearStats items={items} />
       </AppCard>
+
+      {/* ── Colour analysis ─────────────────────────────────────────────────── */}
+      {colourAnalysis && seasonMeta ? (
+        <AppCard accent={warm}>
+          <View style={styles.paletteHeader}>
+            <Text style={styles.paletteEmoji}>{seasonMeta.emoji}</Text>
+            <View style={styles.paletteHeaderText}>
+              <Text style={[styles.blockTitle, { color: text }]}>
+                Your colour palette: {colourAnalysis.palette}
+              </Text>
+              <Text style={[styles.profileMeta, { color: muted }]}>
+                {seasonMeta.adjective}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.swatchRow}>
+            {seasonSwatches.map((hex) => (
+              <View
+                key={hex}
+                style={[styles.swatch, { backgroundColor: hex }]}
+              />
+            ))}
+          </View>
+
+          <Text style={[styles.ruleText, { color: muted }]}>
+            {colourAnalysis.description}
+          </Text>
+
+          <Text style={[styles.paletteCount, { color: warm }]}>
+            {paletteMatchCount} of {items.length} wardrobe items match your
+            palette
+          </Text>
+        </AppCard>
+      ) : null}
+
+      {/* ── Top Rated Outfits ───────────────────────────────────────────── */}
+      {topRatedLogs.length > 0 && (
+        <AppCard accent={success}>
+          <Text style={[styles.blockTitle, { color: text }]}>
+            Top rated outfits
+          </Text>
+          <Text style={[styles.ruleText, { color: muted }]}>
+            Outfits you rated 4★ or higher. These combinations get a score boost
+            in future AI recommendations.
+          </Text>
+          <View style={styles.ratedList}>
+            {topRatedLogs.map((log) => {
+              const names = log.itemIds
+                .map((id) => itemMap.get(id)?.name)
+                .filter(Boolean)
+                .join(" · ");
+              return (
+                <View
+                  key={log.id}
+                  style={[styles.ratedRow, { borderColor: border }]}
+                >
+                  {/* Stars */}
+                  <View style={styles.ratedStars}>
+                    {Array.from({ length: log.rating ?? 0 }).map((_, i) => (
+                      <Text key={i} style={styles.starGlyph}>
+                        ★
+                      </Text>
+                    ))}
+                  </View>
+                  <View style={styles.ratedCopy}>
+                    <Text
+                      style={[styles.ratedItems, { color: text }]}
+                      numberOfLines={1}
+                    >
+                      {names || "Deleted items"}
+                    </Text>
+                    <Text style={[styles.ratedMeta, { color: muted }]}>
+                      {log.occasion ? `${log.occasion} · ` : ""}
+                      {log.wornDate}
+                      {log.ratingNote ? ` · "${log.ratingNote}"` : ""}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </AppCard>
+      )}
 
       <AppCard>
         <Text style={[styles.blockTitle, { color: text }]}>
@@ -431,6 +565,39 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.serif,
     fontWeight: "700",
   },
+  paletteHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  paletteEmoji: {
+    fontSize: 32,
+  },
+  paletteHeaderText: {
+    flex: 1,
+    gap: 2,
+  },
+  swatchRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  swatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  paletteCount: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 8,
+  },
   profileMeta: {
     fontSize: 14,
     lineHeight: 20,
@@ -560,5 +727,36 @@ const styles = StyleSheet.create({
   modalBtnText: {
     fontSize: 15,
     fontWeight: "600",
+  },
+  ratedList: {
+    gap: 10,
+    marginTop: 8,
+  },
+  ratedRow: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  ratedStars: {
+    flexDirection: "row",
+    paddingTop: 1,
+  },
+  starGlyph: {
+    fontSize: 13,
+    color: "#f5c518",
+  },
+  ratedCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  ratedItems: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  ratedMeta: {
+    fontSize: 11,
   },
 });

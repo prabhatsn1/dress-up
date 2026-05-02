@@ -89,3 +89,57 @@ export async function saveMorningBriefingTime(
 ): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ hour, minute }));
 }
+
+// ─── Laundry reminder ───────────────────────────────────────────────────────
+
+const LAUNDRY_ID = "laundry-reminder";
+
+/**
+ * Schedule a one-time laundry reminder for 8 pm tonight.
+ * Replaces any previously scheduled laundry reminder.
+ *
+ * @param dirtyCount - number of items currently in the laundry pile
+ */
+export async function scheduleLaundryReminder(
+  dirtyCount: number,
+): Promise<void> {
+  await Notifications.cancelScheduledNotificationAsync(LAUNDRY_ID).catch(
+    () => undefined,
+  );
+
+  const body =
+    dirtyCount === 1
+      ? "You have 1 item waiting to be washed."
+      : `You have ${dirtyCount} items waiting to be washed.`;
+
+  const now = new Date();
+  const trigger = new Date(now);
+  trigger.setHours(20, 0, 0, 0);
+
+  // If 8 pm has already passed today, fire tomorrow
+  if (trigger <= now) {
+    trigger.setDate(trigger.getDate() + 1);
+  }
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: LAUNDRY_ID,
+    content: {
+      title: "🧺 Laundry reminder",
+      body,
+      sound: true,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: trigger,
+    },
+  });
+}
+
+/**
+ * Cancel any pending laundry reminder (e.g., after all items are marked clean).
+ */
+export async function cancelLaundryReminder(): Promise<void> {
+  await Notifications.cancelScheduledNotificationAsync(LAUNDRY_ID).catch(
+    () => undefined,
+  );
+}
