@@ -284,7 +284,7 @@ export default function OnboardingScreen() {
             Welcome to Dress Up
           </Text>
           <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-            Let's build your{"\n"}style profile
+            Let&apos;s build your{"\n"}style profile
           </Text>
           <Text style={[styles.welcomeBody, { color: colors.muted }]}>
             A quick 1-minute quiz so the AI stylist gives you outfits that
