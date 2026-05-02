@@ -1,3 +1,9 @@
+import {
+  getColourAnalysis,
+  computeOutfitColourScore,
+  computeItemPaletteTag,
+  type ColourAnalysis,
+} from "@/lib/colour-analysis";
 export type GenderIdentity = "Woman" | "Man" | "Non-binary";
 export type BodyShape =
   | "slim"
@@ -63,6 +69,8 @@ export interface WardrobeItem {
   lastWornDaysAgo: number;
   wearCount: number;
   favorite: boolean;
+  /** True while the item is in the laundry pile — excluded from recommendations. */
+  isDirty?: boolean;
   imageUrl?: string;
   imageStoragePath?: string;
   source?: "seed" | "camera" | "library" | "supabase";
@@ -70,6 +78,10 @@ export interface WardrobeItem {
   aiConfidence?: number;
   aiSummary?: string;
   aiTags?: WardrobeAiTags;
+  /** Price paid at time of purchase, in the user's local currency. */
+  purchasePrice?: number;
+  /** ISO date string (YYYY-MM-DD) when the item was purchased. */
+  purchaseDate?: string;
 }
 
 export interface WeatherSnapshot {
@@ -600,6 +612,7 @@ function buildReasons(
   outfit: WardrobeItem[],
   accessory: WardrobeItem | undefined,
   context: RecommendationContext,
+  colourAnalysis?: ColourAnalysis | null,
 ) {
   const reasons: string[] = [];
   const { weather, occasion } = context;
@@ -632,6 +645,25 @@ function buildReasons(
     );
   }
 
+  // Colour-analysis reason
+  if (colourAnalysis) {
+    const bestItems = outfit.filter(
+      (i) => computeItemPaletteTag(i, colourAnalysis) === "best",
+    );
+    const avoidItems = outfit.filter(
+      (i) => computeItemPaletteTag(i, colourAnalysis) === "avoid",
+    );
+    if (bestItems.length > 0) {
+      reasons.push(
+        `${bestItems[0].name} is in your ${colourAnalysis.palette} palette's best colours.`,
+      );
+    } else if (avoidItems.length > 0) {
+      reasons.push(
+        `Consider swapping ${avoidItems[0].name} — its colour can clash with your ${colourAnalysis.palette} palette.`,
+      );
+    }
+  }
+
   if (accessory) {
     reasons.push(
       `${accessory.name} completes the outfit without adding styling friction.`,
@@ -652,21 +684,52 @@ function buildOutfitName(items: WardrobeItem[]) {
   return `${top.colours[0]} ${top.subcategory.toLowerCase()} with ${bottom.subcategory.toLowerCase()}`;
 }
 
+/**
+ * Converts an average rating (1–5) into a score bonus/penalty.
+ *
+ * Formula:  bonus = (avgRating − 3) × 5
+ *
+ * | avg rating | bonus |
+ * |-----------|-------|
+ * | 5 ★        | +10   |
+ * | 4 ★        |  +5   |
+ * | 3 ★        |   0   |
+ * | 2 ★        |  −5   |
+ * | 1 ★        | −10   |
+ */
+function getRatingBonus(avgRating: number | undefined): number {
+  if (avgRating === undefined) return 0;
+  return Math.round((avgRating - 3) * 5);
+}
+
+/** Canonical key for a set of outfit items (order-independent). */
+function outfitKey(outfitItems: WardrobeItem[]): string {
+  return [...outfitItems.map((i) => i.id)].sort().join("|");
+}
+
 export function buildRecommendations(
   items: WardrobeItem[],
   profile: UserProfile,
   context: RecommendationContext,
+  /**
+   * Optional map of outfitKey → average historical rating (1–5).
+   * Pass the result of `getOutfitRatingBoosts(userId)` from outfit-log.ts.
+   * Outfits rated ≥4★ receive a score boost; those rated ≤2★ are penalised.
+   */
+  ratingBoosts: Record<string, number> = {},
 ) {
-  const tops = getItemsByCategory(items, "Top").filter((item) =>
+  const colourAnalysis = getColourAnalysis(profile.skinTone);
+  const cleanItems = items.filter((item) => !item.isDirty);
+  const tops = getItemsByCategory(cleanItems, "Top").filter((item) =>
     item.occasions.includes(context.occasion),
   );
-  const bottoms = getItemsByCategory(items, "Bottom").filter((item) =>
+  const bottoms = getItemsByCategory(cleanItems, "Bottom").filter((item) =>
     item.occasions.includes(context.occasion),
   );
-  const shoes = getItemsByCategory(items, "Shoes").filter((item) =>
+  const shoes = getItemsByCategory(cleanItems, "Shoes").filter((item) =>
     item.occasions.includes(context.occasion),
   );
-  const outerwear = getItemsByCategory(items, "Outerwear").filter((item) =>
+  const outerwear = getItemsByCategory(cleanItems, "Outerwear").filter((item) =>
     item.occasions.includes(context.occasion),
   );
 
@@ -688,7 +751,11 @@ export function buildRecommendations(
           }
         }
 
-        const accessory = getAccessory(items, context.occasion, outfitItems);
+        const accessory = getAccessory(
+          cleanItems,
+          context.occasion,
+          outfitItems,
+        );
         const itemScore = outfitItems.reduce(
           (total, item) =>
             total +
@@ -699,7 +766,15 @@ export function buildRecommendations(
           0,
         );
         const harmonyScore = getColourHarmonyScore(outfitItems);
-        const totalScore = itemScore + harmonyScore;
+        const paletteScore = computeOutfitColourScore(
+          outfitItems,
+          colourAnalysis,
+        );
+        const ratingBonus = getRatingBonus(
+          ratingBoosts[outfitKey(outfitItems)],
+        );
+        const totalScore =
+          itemScore + harmonyScore + paletteScore + ratingBonus;
         const confidence = Math.max(
           68,
           Math.min(97, 68 + Math.round(totalScore / 6)),
@@ -712,7 +787,12 @@ export function buildRecommendations(
           score: totalScore,
           items: outfitItems,
           accessorySuggestion: accessory,
-          reasons: buildReasons(outfitItems, accessory, context),
+          reasons: buildReasons(
+            outfitItems,
+            accessory,
+            context,
+            colourAnalysis,
+          ),
           note:
             confidence >= 90
               ? "Best match today"
@@ -908,4 +988,54 @@ export function getWardrobeStats(items: WardrobeItem[]) {
     underused,
     officeReady,
   };
+}
+
+// ─── Cost-per-wear utilities ──────────────────────────────────────────────────
+
+/**
+ * Item cost-per-wear.
+ *
+ * Formula: CPW = purchasePrice / max(wearCount, 1)
+ *
+ * Returns `undefined` when no purchase price is recorded so callers can
+ * distinguish "not set" from a genuine ₹0/wear value.
+ */
+export function computeItemCpw(item: WardrobeItem): number | undefined {
+  if (item.purchasePrice == null || item.purchasePrice <= 0) return undefined;
+  return item.purchasePrice / Math.max(item.wearCount ?? 1, 1);
+}
+
+/**
+ * Outfit cost-per-wear: the sum of each constituent item's CPW.
+ *
+ * Formula: outfitCPW = Σ (item.purchasePrice / max(item.wearCount, 1))
+ *
+ * Only items with a recorded purchase price contribute to the total.
+ * Returns `undefined` when none of the outfit's items have a price.
+ */
+export function computeOutfitCpw(
+  outfitItems: WardrobeItem[],
+): number | undefined {
+  const contributors = outfitItems.filter(
+    (i) => i.purchasePrice != null && i.purchasePrice > 0,
+  );
+  if (contributors.length === 0) return undefined;
+  return contributors.reduce((sum, i) => sum + (computeItemCpw(i) ?? 0), 0);
+}
+
+/**
+ * Returns items sorted by CPW descending (worst value first).
+ * Items without a purchase price are excluded.
+ */
+export function worstValueItems(
+  items: WardrobeItem[],
+  limit = 5,
+): { item: WardrobeItem; cpw: number }[] {
+  return items
+    .flatMap((item) => {
+      const cpw = computeItemCpw(item);
+      return cpw !== undefined ? [{ item, cpw }] : [];
+    })
+    .sort((a, b) => b.cpw - a.cpw)
+    .slice(0, limit);
 }
