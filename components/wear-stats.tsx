@@ -2,21 +2,19 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import type { WardrobeItem } from "@/lib/wardrobe";
-
-const CATEGORY_COST: Record<string, number> = {
-  Top: 40,
-  Bottom: 60,
-  Outerwear: 120,
-  Shoes: 90,
-  Accessory: 30,
-};
+import {
+  computeItemCpw,
+  worstValueItems,
+  type WardrobeItem,
+} from "@/lib/wardrobe";
 
 interface WearStatsProps {
   items: WardrobeItem[];
+  /** Optional currency symbol. Defaults to "$". */
+  currencySymbol?: string;
 }
 
-export function WearStats({ items }: WearStatsProps) {
+export function WearStats({ items, currencySymbol = "$" }: WearStatsProps) {
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
@@ -39,15 +37,22 @@ export function WearStats({ items }: WearStatsProps) {
   const wornAtLeastOnce = items.filter((i) => (i.wearCount ?? 0) > 0).length;
   const utilisationPct = Math.round((wornAtLeastOnce / items.length) * 100);
 
-  // Cost per wear — top 3 most expensive per wear
-  const withCpw = items
-    .filter((i) => CATEGORY_COST[i.category] !== undefined)
-    .map((i) => ({
-      name: i.name,
-      cpw: CATEGORY_COST[i.category] / Math.max(i.wearCount ?? 1, 1),
-    }))
-    .sort((a, b) => b.cpw - a.cpw)
-    .slice(0, 3);
+  // Items with a real purchase price — for CPW summary stat
+  const pricedItems = items.filter(
+    (i) => i.purchasePrice != null && i.purchasePrice > 0,
+  );
+  const totalInvested = pricedItems.reduce(
+    (sum, i) => sum + (i.purchasePrice ?? 0),
+    0,
+  );
+  const avgCpw =
+    pricedItems.length > 0
+      ? pricedItems.reduce((sum, i) => sum + (computeItemCpw(i) ?? 0), 0) /
+        pricedItems.length
+      : undefined;
+
+  // Worst value: top 5 highest CPW items (real prices only)
+  const worst = worstValueItems(items, 5);
 
   return (
     <View style={styles.root}>
@@ -95,7 +100,7 @@ export function WearStats({ items }: WearStatsProps) {
             {dustCount}
           </Text>
           <Text style={[styles.metricLabel, { color: palette.muted }]}>
-            items gathering dust
+            gathering dust
           </Text>
         </View>
       </View>
@@ -122,33 +127,118 @@ export function WearStats({ items }: WearStatsProps) {
         </View>
       </View>
 
-      {/* Cost per wear */}
-      {withCpw.length > 0 ? (
-        <View style={styles.cpwBlock}>
-          <Text style={[styles.blockLabel, { color: palette.text }]}>
-            Highest cost per wear
-          </Text>
-          {withCpw.map((entry) => (
+      {/* Investment summary — only shown when at least one item has a price */}
+      {pricedItems.length > 0 ? (
+        <View style={styles.metricsRow}>
+          <View
+            style={[
+              styles.metricBox,
+              { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
+          >
+            <Text style={[styles.metricValue, { color: palette.tint }]}>
+              {currencySymbol}
+              {totalInvested.toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}
+            </Text>
+            <Text style={[styles.metricLabel, { color: palette.muted }]}>
+              total invested
+            </Text>
+          </View>
+          {avgCpw !== undefined ? (
             <View
-              key={entry.name}
-              style={[styles.cpwRow, { borderColor: palette.border }]}
+              style={[
+                styles.metricBox,
+                {
+                  backgroundColor: palette.surface,
+                  borderColor: palette.border,
+                },
+              ]}
             >
-              <Text
-                style={[styles.cpwName, { color: palette.text }]}
-                numberOfLines={1}
-              >
-                {entry.name}
+              <Text style={[styles.metricValue, { color: palette.tint }]}>
+                {currencySymbol}
+                {avgCpw.toFixed(2)}
               </Text>
-              <Text style={[styles.cpwValue, { color: palette.accentWarm }]}>
-                ${entry.cpw.toFixed(2)}
+              <Text style={[styles.metricLabel, { color: palette.muted }]}>
+                avg cost / wear
               </Text>
             </View>
-          ))}
-          <Text style={[styles.footnote, { color: palette.muted }]}>
-            * Based on estimated category averages
-          </Text>
+          ) : null}
+          <View
+            style={[
+              styles.metricBox,
+              { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
+          >
+            <Text style={[styles.metricValue, { color: palette.muted }]}>
+              {pricedItems.length}/{items.length}
+            </Text>
+            <Text style={[styles.metricLabel, { color: palette.muted }]}>
+              items priced
+            </Text>
+          </View>
         </View>
       ) : null}
+
+      {/* Worst value items */}
+      {worst.length > 0 ? (
+        <View style={styles.cpwBlock}>
+          <View style={styles.cpwHeader}>
+            <Text style={[styles.blockLabel, { color: palette.text }]}>
+              Worst value items
+            </Text>
+            <Text style={[styles.cpwSubtitle, { color: palette.muted }]}>
+              cost per wear ↓ wear more to improve
+            </Text>
+          </View>
+          {worst.map(({ item, cpw }) => {
+            const wears = item.wearCount ?? 0;
+            // Break-even target: what wear count halves the current CPW?
+            const breakEven =
+              item.purchasePrice != null
+                ? Math.ceil(item.purchasePrice / (cpw * 0.5))
+                : null;
+            return (
+              <View
+                key={item.id}
+                style={[styles.cpwRow, { borderColor: palette.border }]}
+              >
+                <View style={styles.cpwLeft}>
+                  <Text
+                    style={[styles.cpwName, { color: palette.text }]}
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+                  <Text style={[styles.cpwMeta, { color: palette.muted }]}>
+                    {wears} wear{wears !== 1 ? "s" : ""}
+                    {item.purchasePrice != null
+                      ? ` · paid ${currencySymbol}${item.purchasePrice}`
+                      : ""}
+                    {breakEven != null && wears < breakEven
+                      ? ` · halves at ${breakEven}×`
+                      : ""}
+                  </Text>
+                </View>
+                <Text style={[styles.cpwValue, { color: palette.accentWarm }]}>
+                  {currencySymbol}
+                  {cpw.toFixed(2)}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      ) : (
+        <View style={styles.cpwBlock}>
+          <Text style={[styles.blockLabel, { color: palette.text }]}>
+            Cost per wear
+          </Text>
+          <Text style={[styles.footnote, { color: palette.muted }]}>
+            Add a purchase price to any item to see real cost-per-wear insights.
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -207,6 +297,12 @@ const styles = StyleSheet.create({
   cpwBlock: {
     gap: 8,
   },
+  cpwHeader: {
+    gap: 2,
+  },
+  cpwSubtitle: {
+    fontSize: 12,
+  },
   cpwRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -214,9 +310,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingVertical: 6,
   },
+  cpwLeft: {
+    flex: 1,
+    gap: 2,
+  },
   cpwName: {
     flex: 1,
     fontSize: 14,
+    fontWeight: "600",
+  },
+  cpwMeta: {
+    fontSize: 11,
   },
   cpwValue: {
     fontSize: 14,
