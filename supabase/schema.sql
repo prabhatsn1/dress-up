@@ -33,6 +33,7 @@ with check ((select auth.uid()) = id);
 
 -- ─── wardrobe_items ───────────────────────────────────────────────────────────
 
+create table if not exists public.wardrobe_items (
   id uuid primary key default gen_random_uuid(),
   user_id uuid default auth.uid() references auth.users (id) on delete cascade,
   name text not null,
@@ -151,12 +152,8 @@ create table if not exists public.outfit_logs (
   worn_date         date        not null default current_date,
   item_ids          text[]      not null,
   -- canonical fingerprint: sorted item_ids joined with '|' for O(1) dupe lookup
-  outfit_key        text        not null generated always as (
-                      array_to_string(
-                        array(select unnest(item_ids) order by 1),
-                        '|'
-                      )
-                    ) stored,
+  -- populated by the client: itemIds.sort().join('|')
+  outfit_key        text        not null,
   occasion          text,
   temperature_c     integer,
   weather_condition text,

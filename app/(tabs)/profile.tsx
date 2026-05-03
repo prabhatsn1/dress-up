@@ -39,6 +39,58 @@ import { useAppData } from "@/providers/app-data-provider";
 
 export { RouteErrorBoundary as ErrorBoundary } from "@/components/error-boundary";
 
+function StatusIndicator({
+  label,
+  detail,
+  active,
+  activeColor,
+  text,
+  muted,
+}: {
+  label: string;
+  detail: string;
+  active: boolean;
+  activeColor: string;
+  text: string;
+  muted: string;
+}) {
+  return (
+    <View style={indicatorStyles.row}>
+      <View
+        style={[
+          indicatorStyles.dot,
+          { backgroundColor: active ? activeColor : "#9ca3af" },
+        ]}
+      />
+      <View style={indicatorStyles.copy}>
+        <Text style={[indicatorStyles.label, { color: text }]}>{label}</Text>
+        <Text style={[indicatorStyles.detail, { color: muted }]}>{detail}</Text>
+      </View>
+      <Text style={[indicatorStyles.badge, { color: active ? activeColor : muted }]}>
+        {active ? "Connected" : "Offline"}
+      </Text>
+    </View>
+  );
+}
+
+const indicatorStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  copy: { flex: 1, gap: 1 },
+  label: { fontSize: 14, fontWeight: "600" },
+  detail: { fontSize: 12 },
+  badge: { fontSize: 12, fontWeight: "700" },
+});
+
 export default function ProfileScreen() {
   const [localOnly, setLocalOnly] = useState(true);
   const [backupEnabled, setBackupEnabled] = useState(false);
@@ -223,30 +275,37 @@ export default function ProfileScreen() {
         <Text style={[styles.blockTitle, { color: text }]}>
           Live integrations
         </Text>
-        <View style={styles.ruleList}>
-          <Text style={[styles.ruleText, { color: muted }]}>
-            • Weather source: {weather.source ?? "unknown"} for{" "}
-            {weather.location} at {weather.temperatureC}C.
-          </Text>
-          <Text style={[styles.ruleText, { color: muted }]}>
-            • Feels like {weather.feelsLikeC ?? weather.temperatureC}C, humidity{" "}
-            {weather.humidity ?? "n/a"}%, wind {weather.windKph ?? "n/a"} kph.
-          </Text>
-          <Text style={[styles.ruleText, { color: muted }]}>
-            • Wardrobe sync:{" "}
-            {supabaseConfigured ? wardrobeSource : "local-only mode"}.
-          </Text>
-          <Text style={[styles.ruleText, { color: muted }]}>
-            • Supabase keys:{" "}
-            {supabaseConfigured ? "configured" : "missing from Expo public env"}
-            .
-          </Text>
-          {lastSyncMessage ? (
-            <Text style={[styles.ruleText, { color: muted }]}>
-              • {lastSyncMessage}
-            </Text>
-          ) : null}
+        <View style={styles.indicatorList}>
+          <StatusIndicator
+            label="Supabase"
+            detail={supabaseConfigured ? wardrobeSource : "not configured"}
+            active={supabaseConfigured}
+            activeColor={success}
+            text={text}
+            muted={muted}
+          />
+          <StatusIndicator
+            label="AI tagging"
+            detail={supabaseConfigured ? "OpenAI + Hugging Face" : "unavailable — needs Supabase"}
+            active={supabaseConfigured}
+            activeColor={success}
+            text={text}
+            muted={muted}
+          />
+          <StatusIndicator
+            label="Weather"
+            detail={`${weather.source ?? "sample"} · ${weather.location} · ${weather.temperatureC}°C`}
+            active={weather.source !== "Sample" && weather.source != null}
+            activeColor={cool}
+            text={text}
+            muted={muted}
+          />
         </View>
+        {lastSyncMessage ? (
+          <Text style={[styles.ruleText, { color: muted, marginTop: 10 }]}>
+            {lastSyncMessage}
+          </Text>
+        ) : null}
       </AppCard>
 
       <AppCard>
@@ -616,6 +675,9 @@ const styles = StyleSheet.create({
   },
   ruleList: {
     gap: 10,
+  },
+  indicatorList: {
+    gap: 4,
   },
   ruleText: {
     fontSize: 14,
