@@ -36,7 +36,7 @@ export const Colors = {
   },
 };
 
-export const Fonts = Platform.select({
+const _fonts = Platform.select({
   ios: {
     sans: 'system-ui',
     serif: 'ui-serif',
@@ -56,3 +56,10 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+export const Fonts = _fonts ?? {
+  sans: 'normal',
+  serif: 'serif',
+  rounded: 'normal',
+  mono: 'monospace',
+};

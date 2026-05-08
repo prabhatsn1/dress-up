@@ -1,0 +1,29 @@
+# Dependencies (reinstalled during build)
+node_modules/
+
+# Local Expo cache
+.expo/
+
+# Android local build artifacts
+android/.gradle/
+android/.kotlin/
+android/app/build/
+android/build/
+
+# Test files
+__tests__/
+coverage/
+
+# Supabase backend (deployed separately, not needed for mobile build)
+supabase/
+
+# Docs and local config
+README.md
+.env
+.env.example
+.gitignore
+
+# Editor / OS artifacts
+.DS_Store
+Thumbs.db
+*.log

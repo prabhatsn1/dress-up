@@ -5,18 +5,19 @@ import {
   ThemeProvider,
   type Theme,
 } from "@react-navigation/native";
+import * as Linking from "expo-linking";
+import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import "react-native-reanimated";
-import * as Notifications from "expo-notifications";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { onAuthStateChange } from "@/lib/auth";
 import { isOnboardingCompleted } from "@/lib/profile";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AppDataProvider } from "@/providers/app-data-provider";
 
 export const unstable_settings = {
@@ -39,6 +40,32 @@ export default function RootLayout() {
       },
     );
     return () => subscription.remove();
+  }, []);
+
+  // Handle magic link deep link — extract tokens from URL fragment and set session
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+
+    async function handleUrl(url: string) {
+      const parsed = Linking.parse(url);
+      const fragment = (parsed as unknown as { fragment?: string }).fragment ?? "";
+      const params = Object.fromEntries(new URLSearchParams(fragment));
+      if (params.access_token && params.refresh_token) {
+        await supabase!.auth.setSession({
+          access_token: params.access_token,
+          refresh_token: params.refresh_token,
+        });
+      }
+    }
+
+    // Cold start: app opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) void handleUrl(url);
+    });
+
+    // Warm start: deep link arrives while app is open
+    const sub = Linking.addEventListener("url", ({ url }) => void handleUrl(url));
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
@@ -98,7 +125,6 @@ export default function RootLayout() {
           },
         };
 
-  // Show a full-screen loading spinner while the initial session check resolves
   if (session === undefined) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>

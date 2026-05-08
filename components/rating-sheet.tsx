@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 17,
-    fontFamily: Fonts.ios?.rounded ?? Fonts.default.rounded,
+    fontFamily: Fonts.rounded,
     fontWeight: "700",
     textAlign: "center",
   },
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    fontFamily: Fonts.ios?.sans ?? Fonts.default.sans,
+    fontFamily: Fonts.sans,
   },
   actions: {
     flexDirection: "row",

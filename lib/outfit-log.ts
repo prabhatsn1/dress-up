@@ -11,7 +11,12 @@
  *      the app remains fast on poor connections.
  */
 
-import * as Crypto from "expo-crypto";
+function generateUUID(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 
 import {
   buildOutfitKey,
@@ -157,7 +162,7 @@ export async function saveOutfitLog(
   const wornDate = options.wornDate ?? new Date().toISOString().slice(0, 10);
 
   const log: OutfitLog = {
-    id: Crypto.randomUUID(),
+    id: generateUUID(),
     userId: options.userId,
     wornDate,
     itemIds: options.itemIds,

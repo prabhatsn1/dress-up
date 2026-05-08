@@ -9,7 +9,12 @@ export async function signInWithEmail(
     return { error: "Supabase is not configured." };
   }
 
-  const { error } = await supabase.auth.signInWithOtp({ email });
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: "dressup://",
+    },
+  });
 
   return { error: error?.message ?? null };
 }
