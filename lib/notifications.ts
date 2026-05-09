@@ -1,7 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 
 import type { WeatherSnapshot } from "@/lib/wardrobe";
+
+/** Whether notifications are actually usable in the current runtime */
+const notificationsSupported = Platform.OS !== "android" || !__DEV__;
 
 const BRIEFING_ID = "morning-briefing";
 const STORAGE_KEY = "morning_briefing_time";
@@ -11,6 +15,7 @@ const STORAGE_KEY = "morning_briefing_time";
  * Returns true if granted.
  */
 export async function requestNotificationPermission(): Promise<boolean> {
+  if (!notificationsSupported) return false;
   const { status } = await Notifications.requestPermissionsAsync();
   return status === "granted";
 }
@@ -25,6 +30,7 @@ export async function scheduleMorningBriefing(
   title: string,
   body: string,
 ): Promise<string> {
+  if (!notificationsSupported) return "";
   await Notifications.cancelScheduledNotificationAsync(BRIEFING_ID).catch(
     () => undefined,
   );
@@ -35,7 +41,6 @@ export async function scheduleMorningBriefing(
     trigger: {
       hour,
       minute,
-      repeats: true,
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
     },
   });
@@ -45,6 +50,7 @@ export async function scheduleMorningBriefing(
  * Cancel the daily morning briefing notification.
  */
 export async function cancelMorningBriefing(): Promise<void> {
+  if (!notificationsSupported) return;
   await Notifications.cancelScheduledNotificationAsync(BRIEFING_ID).catch(
     () => undefined,
   );
@@ -103,6 +109,7 @@ const LAUNDRY_ID = "laundry-reminder";
 export async function scheduleLaundryReminder(
   dirtyCount: number,
 ): Promise<void> {
+  if (!notificationsSupported) return;
   await Notifications.cancelScheduledNotificationAsync(LAUNDRY_ID).catch(
     () => undefined,
   );
@@ -139,6 +146,7 @@ export async function scheduleLaundryReminder(
  * Cancel any pending laundry reminder (e.g., after all items are marked clean).
  */
 export async function cancelLaundryReminder(): Promise<void> {
+  if (!notificationsSupported) return;
   await Notifications.cancelScheduledNotificationAsync(LAUNDRY_ID).catch(
     () => undefined,
   );

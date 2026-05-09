@@ -204,7 +204,7 @@ function styles(colors: (typeof Colors)["light"]) {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-end",
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingTop: Platform.OS === "ios" ? 60 : 40,
       paddingBottom: 16,
       backgroundColor: colors.surface,
@@ -212,8 +212,8 @@ function styles(colors: (typeof Colors)["light"]) {
       borderBottomColor: colors.border,
     },
     headerTitle: {
-      fontSize: 24,
-      fontWeight: "700",
+      fontSize: 22,
+      fontWeight: "600",
       color: colors.text,
     },
     headerSub: {
@@ -227,7 +227,7 @@ function styles(colors: (typeof Colors)["light"]) {
       gap: 4,
       paddingVertical: 8,
       paddingHorizontal: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: colors.background,
       borderWidth: 1,
       borderColor: colors.success,
@@ -246,7 +246,7 @@ function styles(colors: (typeof Colors)["light"]) {
     },
     sectionTitle: {
       fontSize: 12,
-      fontWeight: "700",
+      fontWeight: "600",
       letterSpacing: 0.8,
       textTransform: "uppercase",
       color: colors.muted,
@@ -262,15 +262,15 @@ function styles(colors: (typeof Colors)["light"]) {
       backgroundColor: colors.background,
     },
     emptyTitle: {
-      fontSize: 22,
-      fontWeight: "700",
+      fontSize: 20,
+      fontWeight: "600",
       color: colors.text,
     },
     emptyBody: {
-      fontSize: 15,
+      fontSize: 14,
       color: colors.muted,
       textAlign: "center",
-      lineHeight: 22,
+      lineHeight: 20,
     },
   });
 }
@@ -281,7 +281,7 @@ function itemRowStyles(colors: (typeof Colors)["light"]) {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: colors.surface,
-      borderRadius: 14,
+      borderRadius: 16,
       padding: 10,
       marginBottom: 8,
       borderWidth: StyleSheet.hairlineWidth,
@@ -291,7 +291,7 @@ function itemRowStyles(colors: (typeof Colors)["light"]) {
     thumb: {
       width: THUMB,
       height: THUMB,
-      borderRadius: 10,
+      borderRadius: 12,
       overflow: "hidden",
       position: "relative",
     },
@@ -322,7 +322,7 @@ function itemRowStyles(colors: (typeof Colors)["light"]) {
       gap: 3,
     },
     name: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: "600",
       color: colors.text,
     },
@@ -337,7 +337,7 @@ function itemRowStyles(colors: (typeof Colors)["light"]) {
       gap: 4,
       paddingVertical: 6,
       paddingHorizontal: 10,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: colors.background,
       borderWidth: 1,
       borderColor: colors.success,

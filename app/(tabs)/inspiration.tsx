@@ -13,8 +13,7 @@ import {
   View,
 } from "react-native";
 
-import { AppCard, SectionTitle } from "@/components/wardrobe-ui";
-import { Fonts } from "@/constants/theme";
+import { AppCard } from "@/components/wardrobe-ui";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import {
   classifyVibe,
@@ -317,11 +316,13 @@ export default function InspirationScreen() {
         contentContainerStyle={styles.boardContent}
         showsVerticalScrollIndicator={false}
       >
-        <SectionTitle
-          eyebrow="Style Board"
-          title="Inspiration"
-          detail="Save looks you love and see which items in your closet get you closest."
-        />
+        <View style={styles.pageHeader}>
+          <Text style={[styles.pageTitle, { color: text }]}>Inspiration</Text>
+          <Text style={[styles.pageSubtitle, { color: muted }]}>
+            Save looks you love and see which items in your closet get you
+            closest.
+          </Text>
+        </View>
 
         {/* Vibes filter row */}
         <ScrollView
@@ -972,21 +973,33 @@ const styles = StyleSheet.create({
   },
   boardContent: {
     paddingHorizontal: GRID_PADDING,
-    paddingTop: 28,
-    paddingBottom: 120,
-    gap: 18,
-  },
-  detailContent: {
-    paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 120,
-    gap: 18,
-  },
-  addContent: {
-    paddingHorizontal: 20,
-    paddingTop: 28,
+    paddingTop: 16,
     paddingBottom: 120,
     gap: 16,
+  },
+  detailContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 120,
+    gap: 16,
+  },
+  addContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 120,
+    gap: 16,
+  },
+
+  pageHeader: {
+    gap: 4,
+  },
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: "600",
+  },
+  pageSubtitle: {
+    fontSize: 13,
+    lineHeight: 19,
   },
 
   // Board: vibe filter row
@@ -1019,7 +1032,7 @@ const styles = StyleSheet.create({
   },
   pinTile: {
     width: TILE_SIZE,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
   },
@@ -1033,12 +1046,11 @@ const styles = StyleSheet.create({
   },
   pinTileVibe: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   pinTileTitle: {
     fontSize: 13,
     fontWeight: "600",
-    fontFamily: Fonts.serif,
   },
   pinTileMeta: {
     fontSize: 11,
@@ -1054,25 +1066,24 @@ const styles = StyleSheet.create({
     fontSize: 48,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    fontFamily: Fonts.serif,
+    fontSize: 18,
+    fontWeight: "600",
   },
   emptyMeta: {
-    fontSize: 14,
+    fontSize: 13,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 20,
     maxWidth: 280,
   },
   emptyAddBtn: {
     marginTop: 12,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 24,
+    borderRadius: 16,
   },
   emptyAddBtnText: {
     color: "#fff",
-    fontWeight: "700",
+    fontWeight: "600",
     fontSize: 15,
   },
 
@@ -1106,23 +1117,22 @@ const styles = StyleSheet.create({
   },
   vibeBadgeText: {
     color: "#fff",
-    fontWeight: "700",
+    fontWeight: "600",
     fontSize: 13,
   },
   detailTitle: {
-    fontSize: 22,
-    fontFamily: Fonts.serif,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "600",
     marginBottom: 4,
   },
   detailDesc: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 19,
     marginBottom: 12,
   },
   detailNotes: {
     fontSize: 13,
-    lineHeight: 20,
+    lineHeight: 19,
     fontStyle: "italic",
     marginTop: 10,
   },
@@ -1167,7 +1177,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 2,
   },
   sectionSub: {
@@ -1185,7 +1195,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 13,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1.5,
   },
   deleteBtnText: {
@@ -1195,14 +1205,13 @@ const styles = StyleSheet.create({
 
   // Add view
   addScreenTitle: {
-    fontSize: 28,
-    fontFamily: Fonts.serif,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "600",
     marginBottom: 4,
   },
   stepLabel: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     marginBottom: 8,
   },
   stepSub: {
@@ -1221,22 +1230,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   pickBtnText: {
     color: "#fff",
-    fontWeight: "700",
+    fontWeight: "600",
     fontSize: 14,
   },
   addPreviewImage: {
     width: "100%",
     height: 220,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   changeImageBtn: {
     marginTop: 10,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: "center",
   },
@@ -1246,7 +1255,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
@@ -1267,7 +1276,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1.5,
   },
   vibeOptionEmoji: {
@@ -1291,7 +1300,7 @@ const styles = StyleSheet.create({
   tagInput: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
@@ -1299,20 +1308,20 @@ const styles = StyleSheet.create({
   tagAddBtn: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   saveBtn: {
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
     marginTop: 4,
   },
   saveBtnText: {
     color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
+    fontWeight: "600",
+    fontSize: 15,
   },
 
   // FAB

@@ -139,7 +139,7 @@ export function RatingSheet({
                   ) : (
                     <View
                       key={item.id}
-                      style={[styles.thumbPlaceholder, { borderColor }]}
+                      style={[styles.thumbPlaceholder, { borderColor: border }]}
                     >
                       <MaterialIcons name="checkroom" size={18} color={muted} />
                     </View>

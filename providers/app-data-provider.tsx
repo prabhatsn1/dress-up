@@ -238,6 +238,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   >([]);
   const [lastGamificationUpdate, setLastGamificationUpdate] =
     useState<GamificationUpdate | null>(null);
+  const [isDbReady, setIsDbReady] = useState(false);
   const refreshWeather = async () => {
     setIsWeatherLoading(true);
     setWeatherError(null);
@@ -266,6 +267,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     try {
       await initDb();
+      setIsDbReady(true);
 
       // Seed on first run
       let localItems = await getAllItems();
@@ -524,6 +526,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     async function initAndSchedule() {
       await refreshWeather();
       await initDb();
+      setIsDbReady(true);
       await refreshWardrobe();
       const saved = await loadProfile();
       if (saved) setProfile(saved);
@@ -533,15 +536,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   // Load gamification state once DB is initialised
   useEffect(() => {
+    if (!isDbReady) return;
+
     void (async () => {
-      const state = await getGamificationState();
-      setGamification(state);
-      const badges = await getEarnedBadges();
-      setEarnedBadgeIds(new Set(badges.map((b) => b.id)));
-      const challenges = await getOrCreateWeeklyChallenges();
-      setWeeklyChallenges(challenges);
+      try {
+        const state = await getGamificationState();
+        setGamification(state);
+        const badges = await getEarnedBadges();
+        setEarnedBadgeIds(new Set(badges.map((b) => b.id)));
+        const challenges = await getOrCreateWeeklyChallenges();
+        setWeeklyChallenges(challenges);
+      } catch {
+        // Keep default state when DB isn't ready or query fails.
+      }
     })();
-  }, []);
+  }, [isDbReady]);
 
   // Re-schedule the briefing whenever items or weather settle (if a time has been saved)
   useEffect(() => {

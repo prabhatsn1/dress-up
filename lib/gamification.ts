@@ -11,8 +11,6 @@
  * - All write paths return the updated GamificationState so callers can react.
  */
 
-import * as Crypto from "expo-crypto";
-
 import {
   getEarnedBadgeIds,
   getGamificationState,
@@ -24,6 +22,13 @@ import {
   type WeeklyChallengeRow,
 } from "@/lib/local-db";
 import type { OutfitLog } from "@/lib/local-db";
+
+function generateUUID(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 
 // ─── XP Events ───────────────────────────────────────────────────────────────
 
@@ -538,7 +543,7 @@ export async function getOrCreateWeeklyChallenges(): Promise<
   const selected = pickChallengesForWeek(seed, 3);
 
   const challenges: WeeklyChallengeRow[] = selected.map((template, idx) => ({
-    id: Crypto.randomUUID(),
+    id: generateUUID(),
     weekStart,
     challengeKey: template.key,
     title: template.title,

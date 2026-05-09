@@ -25,7 +25,7 @@
  * No special deep-link is required.
  */
 
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { Linking, Platform } from "react-native";
 import { captureRef } from "react-native-view-shot";

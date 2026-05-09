@@ -49,6 +49,42 @@ function ensureSupabase() {
   return supabase;
 }
 
+export interface AiPairingSuggestion {
+  headline: string;
+  stylistNote: string;
+  pairings: Array<{
+    itemIds: string[];
+    occasion: string;
+    reason: string;
+  }>;
+  missingPieceSuggestion?: string | null;
+}
+
+export async function suggestPairingsForItem(input: {
+  anchorItem: WardrobeItem;
+  allItems: WardrobeItem[];
+}) {
+  const client = ensureSupabase();
+
+  const otherItems = input.allItems.filter(
+    (i) => i.id !== input.anchorItem.id && !i.isDirty,
+  );
+
+  const { data, error } = await client.functions.invoke("wardrobe-ai", {
+    body: {
+      action: "suggest-pairings",
+      anchorItem: input.anchorItem,
+      wardrobeItems: otherItems,
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data as AiPairingSuggestion;
+}
+
 export async function analyzeWardrobeItemWithAi(item: WardrobeItem) {
   const client = ensureSupabase();
 

@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   },
   monthLabel: {
     fontSize: 15,
-    fontFamily: Fonts.ios?.rounded ?? Fonts.default.rounded,
+    fontFamily: Fonts.rounded,
     fontWeight: "700",
   },
   dayLabelsRow: {

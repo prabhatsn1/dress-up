@@ -48,12 +48,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons size={size} name="checkroom" color={color} />
           ),
+          tabBarBadge: dirtyCount > 0 ? dirtyCount : undefined,
         }}
       />
       <Tabs.Screen
         name="planner"
         options={{
-          title: "Planner",
+          title: "Plan",
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons size={size} name="calendar-month" color={color} />
           ),
@@ -64,42 +65,13 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons size={size} name="shield" color={color} />
+            <MaterialIcons size={size} name="person" color={color} />
           ),
         }}
       />
-      <Tabs.Screen
-        name="laundry"
-        options={{
-          title: "Laundry",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons
-              size={size}
-              name="local-laundry-service"
-              color={color}
-            />
-          ),
-          tabBarBadge: dirtyCount > 0 ? dirtyCount : undefined,
-        }}
-      />
-      <Tabs.Screen
-        name="capsule"
-        options={{
-          title: "Capsule",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons size={size} name="style" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="inspiration"
-        options={{
-          title: "Inspo",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons size={size} name="collections" color={color} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="laundry" options={{ href: null }} />
+      <Tabs.Screen name="capsule" options={{ href: null }} />
+      <Tabs.Screen name="inspiration" options={{ href: null }} />
     </Tabs>
   );
 }
