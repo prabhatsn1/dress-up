@@ -942,7 +942,7 @@ export function buildPackingList(plan: WeeklyPlanEntry[]) {
   const uniqueItems = new Map<string, WardrobeItem>();
 
   for (const entry of selectedDays) {
-    for (const item of entry.outfit.items) {
+    for (const item of entry.outfit?.items ?? []) {
       uniqueItems.set(item.id, item);
     }
   }

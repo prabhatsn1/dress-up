@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 
-import { AppCard, Chip, SectionTitle } from "@/components/wardrobe-ui";
+import { AppCard, Chip } from "@/components/wardrobe-ui";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
@@ -175,7 +175,7 @@ type ViewMode = "list" | "detail" | "create" | "challenge";
 export default function CapsuleScreen() {
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
-  const { items } = useAppData();
+  const { items, isWardrobeLoading } = useAppData();
 
   // Navigation state
   const [view, setView] = useState<ViewMode>("list");
@@ -194,13 +194,18 @@ export default function CapsuleScreen() {
   const [isChallenge, setIsChallenge] = useState(false);
 
   const loadCapsules = useCallback(async () => {
-    const all = await getAllCapsules();
-    setCapsules(all);
+    try {
+      const all = await getAllCapsules();
+      setCapsules(all);
+    } catch {
+      // DB not yet initialised — will retry when wardrobe finishes loading
+    }
   }, []);
 
   useEffect(() => {
+    if (isWardrobeLoading) return;
     void loadCapsules();
-  }, [loadCapsules]);
+  }, [loadCapsules, isWardrobeLoading]);
 
   // ── Detail view derived state ─────────────────────────────────────────────
 
@@ -354,11 +359,19 @@ export default function CapsuleScreen() {
           </Text>
         </Pressable>
 
-        <SectionTitle
-          eyebrow={selectedCapsule.purpose.toUpperCase()}
-          title={selectedCapsule.name}
-          detail={selectedCapsule.description}
-        />
+        <View style={s.pageHeader}>
+          <Text style={[s.headerEyebrow, { color: palette.muted }]}>
+            {selectedCapsule.purpose.toUpperCase()}
+          </Text>
+          <Text style={[s.headerTitle, { color: palette.text }]}>
+            {selectedCapsule.name}
+          </Text>
+          {selectedCapsule.description ? (
+            <Text style={[s.headerDetail, { color: palette.muted }]}>
+              {selectedCapsule.description}
+            </Text>
+          ) : null}
+        </View>
 
         {/* Challenge progress banner */}
         {detailChallenge ? (
@@ -565,11 +578,18 @@ export default function CapsuleScreen() {
           <Text style={[s.backText, { color: palette.tint }]}>Cancel</Text>
         </Pressable>
 
-        <SectionTitle
-          eyebrow="New capsule"
-          title="Build your capsule"
-          detail={`Choose ${CAPSULE_MIN_ITEMS}–${CAPSULE_MAX_ITEMS} items that work together.`}
-        />
+        <View style={s.pageHeader}>
+          <Text style={[s.headerEyebrow, { color: palette.muted }]}>
+            NEW CAPSULE
+          </Text>
+          <Text style={[s.headerTitle, { color: palette.text }]}>
+            Build your capsule
+          </Text>
+          <Text style={[s.headerDetail, { color: palette.muted }]}>
+            Choose {CAPSULE_MIN_ITEMS}–{CAPSULE_MAX_ITEMS} items that work
+            together.
+          </Text>
+        </View>
 
         {/* Name */}
         <AppCard>
@@ -735,11 +755,15 @@ export default function CapsuleScreen() {
       style={[s.screen, { backgroundColor: palette.background }]}
       contentContainerStyle={s.content}
     >
-      <SectionTitle
-        eyebrow="Wardrobe"
-        title="Capsule wardrobe"
-        detail="Curate a focused collection that maximises outfit variety from fewer pieces."
-      />
+      <View style={s.pageHeader}>
+        <Text style={[s.headerTitle, { color: palette.text }]}>
+          Capsule wardrobe
+        </Text>
+        <Text style={[s.headerDetail, { color: palette.muted }]}>
+          Curate a focused collection that maximises outfit variety from fewer
+          pieces.
+        </Text>
+      </View>
 
       {/* What is a capsule */}
       <AppCard accent={palette.tint}>
@@ -876,12 +900,22 @@ export default function CapsuleScreen() {
 
 const s = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 20, gap: 16, paddingBottom: 48 },
+  content: { padding: 16, gap: 16, paddingBottom: 48 },
+
+  pageHeader: { gap: 4, marginBottom: 4 },
+  headerEyebrow: {
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  headerTitle: { fontSize: 22, fontWeight: "600" },
+  headerDetail: { fontSize: 13, lineHeight: 19 },
 
   back: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
   backText: { fontSize: 15, fontWeight: "600" },
 
-  sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
+  sectionTitle: { fontSize: 15, fontWeight: "600", marginBottom: 4 },
   sectionSubtitle: { fontSize: 13, marginBottom: 4 },
   bodyText: { fontSize: 14, lineHeight: 20 },
 
@@ -893,7 +927,7 @@ const s = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 10,
     fontSize: 14,
   },
@@ -930,17 +964,17 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 14,
   },
-  saveBtnText: { color: "#fff9f3", fontWeight: "700", fontSize: 15 },
+  saveBtnText: { color: "#FFFFFF", fontWeight: "600", fontSize: 15 },
 
   deleteBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     paddingVertical: 12,
   },
@@ -958,16 +992,16 @@ const s = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  challengeTitle: { fontSize: 16, fontWeight: "700", flex: 1 },
+  challengeTitle: { fontSize: 16, fontWeight: "600", flex: 1 },
   badge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3 },
-  badgeText: { fontSize: 12, fontWeight: "700" },
+  badgeText: { fontSize: 12, fontWeight: "600" },
   challengeRow: {
     flexDirection: "row",
     gap: 16,
     marginBottom: 8,
   },
   challengeStat: { alignItems: "center", gap: 2 },
-  challengeValue: { fontSize: 24, fontWeight: "700" },
+  challengeValue: { fontSize: 24, fontWeight: "600" },
   challengeLabel: { fontSize: 11 },
   challengeHint: { fontSize: 12, marginTop: 6 },
 
@@ -982,7 +1016,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 8,
   },
-  toggleBtnText: { color: "#fff9f3", fontWeight: "700", fontSize: 13 },
+  toggleBtnText: { color: "#FFFFFF", fontWeight: "600", fontSize: 13 },
 
   errorText: { fontSize: 13, marginTop: 6 },
   successText: { fontSize: 13, marginTop: 6, fontWeight: "600" },
@@ -1006,11 +1040,11 @@ const s = StyleSheet.create({
   suggestionName: { fontSize: 14, fontWeight: "600" },
   suggestionReason: { fontSize: 12 },
   applyBtn: {
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  applyBtnText: { color: "#fff9f3", fontWeight: "700", fontSize: 12 },
+  applyBtnText: { color: "#FFFFFF", fontWeight: "600", fontSize: 12 },
 
   // Capsule list card
   capsuleCardHeader: {
@@ -1019,10 +1053,10 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   capsuleCardTitles: { flex: 1, gap: 2 },
-  capsuleName: { fontSize: 16, fontWeight: "700" },
+  capsuleName: { fontSize: 15, fontWeight: "600" },
   capsuleMeta: { fontSize: 12 },
   capsuleScores: { alignItems: "center" },
-  capsuleScore: { fontSize: 22, fontWeight: "700" },
+  capsuleScore: { fontSize: 22, fontWeight: "600" },
   capsuleScoreLabel: { fontSize: 10 },
   challengePill: {
     flexDirection: "row",
@@ -1034,6 +1068,6 @@ const s = StyleSheet.create({
 
   // Empty
   emptyState: { alignItems: "center", gap: 8, paddingVertical: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: "700" },
-  emptyBody: { fontSize: 14, textAlign: "center", lineHeight: 20 },
+  emptyTitle: { fontSize: 17, fontWeight: "600" },
+  emptyBody: { fontSize: 13, textAlign: "center", lineHeight: 19 },
 });

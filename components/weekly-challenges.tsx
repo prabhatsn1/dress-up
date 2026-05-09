@@ -102,18 +102,18 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontFamily: Fonts.ios?.sans,
+    fontFamily: Fonts.sans,
     fontWeight: "600",
     fontSize: 14,
   },
   xpBadge: {
     fontSize: 12,
     fontWeight: "700",
-    fontFamily: Fonts.ios?.sans,
+    fontFamily: Fonts.sans,
   },
   description: {
     fontSize: 12,
-    fontFamily: Fonts.ios?.sans,
+    fontFamily: Fonts.sans,
     lineHeight: 16,
   },
   progressRow: {
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 11,
-    fontFamily: Fonts.ios?.sans,
+    fontFamily: Fonts.sans,
     width: 28,
     textAlign: "right",
   },

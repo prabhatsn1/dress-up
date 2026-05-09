@@ -15,7 +15,7 @@ import {
 } from "react-native";
 
 import { Chip } from "@/components/wardrobe-ui";
-import { Colors, Fonts } from "@/constants/theme";
+import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { markOnboardingCompleted, saveProfile } from "@/lib/profile";
@@ -280,24 +280,66 @@ export default function OnboardingScreen() {
     return (
       <View style={[styles.slide, { width }]}>
         <View style={styles.welcomeContent}>
-          <Text style={[styles.welcomeEyebrow, { color: colors.accentWarm }]}>
-            Welcome to Dress Up
-          </Text>
+          {/* Logo */}
+          <View style={styles.welcomeLogoRow}>
+            <View style={styles.welcomeLogo}>
+              <Text style={styles.welcomeLogoIcon}>✦</Text>
+            </View>
+            <View style={styles.welcomeAIBadge}>
+              <Text style={styles.welcomeAIText}>AI</Text>
+            </View>
+          </View>
+
           <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-            Let&apos;s build your{"\n"}style profile
+            AI Wardrobe{"\n"}
+            <Text style={{ color: colors.accentCool }}>Expo</Text>
           </Text>
           <Text style={[styles.welcomeBody, { color: colors.muted }]}>
-            A quick 1-minute quiz so the AI stylist gives you outfits that
-            actually fit your body, taste, and lifestyle — not generic
-            suggestions.
+            Your smart wardrobe companion, designed for how you actually live.
           </Text>
+
+          {/* Privacy badge */}
+          <View style={styles.privacyBadge}>
+            <Text style={styles.privacyBadgeText}>
+              🛡 Your data stays on your device
+            </Text>
+          </View>
+
+          {/* Features */}
+          <View style={styles.featureList}>
+            {[
+              { emoji: "🌤", text: "Weather-aware outfit recommendations" },
+              { emoji: "✦", text: "AI-powered style analysis" },
+              { emoji: "📅", text: "Capsule wardrobe planning" },
+            ].map((f, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.featureCard,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+              >
+                <Text style={styles.featureEmoji}>{f.emoji}</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  {f.text}
+                </Text>
+              </View>
+            ))}
+          </View>
+
           <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.tint }]}
+            style={[styles.primaryButton, { backgroundColor: colors.text }]}
             onPress={() => setStep(1)}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryButtonText}>Get Started</Text>
+            <Text style={styles.primaryButtonText}>Get Started →</Text>
           </TouchableOpacity>
+          <Text style={[styles.welcomeDisclaimer, { color: colors.muted }]}>
+            No account needed. No data shared.
+          </Text>
         </View>
       </View>
     );
@@ -448,13 +490,13 @@ export default function OnboardingScreen() {
   }
 
   const slides = [
-    renderWelcome(),
-    renderNameStep(),
-    renderGenderStep(),
-    renderHeightStep(),
-    renderBodyShapeStep(),
-    renderStyleStep(),
-    renderOccasionStep(),
+    { key: "welcome", node: renderWelcome() },
+    { key: "name", node: renderNameStep() },
+    { key: "gender", node: renderGenderStep() },
+    { key: "height", node: renderHeightStep() },
+    { key: "body-shape", node: renderBodyShapeStep() },
+    { key: "style", node: renderStyleStep() },
+    { key: "occasion", node: renderOccasionStep() },
   ];
 
   return (
@@ -468,7 +510,11 @@ export default function OnboardingScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        {slides}
+        {slides.map((slide) => (
+          <View key={slide.key} style={{ width }}>
+            {slide.node}
+          </View>
+        ))}
       </ScrollView>
 
       {/* Navigation footer — hidden on welcome slide */}
@@ -530,37 +576,103 @@ const styles = StyleSheet.create({
   welcomeContent: {
     flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 32,
-    paddingBottom: 60,
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingBottom: 40,
   },
-  welcomeEyebrow: {
-    fontSize: 13,
+  welcomeLogoRow: {
+    marginBottom: 20,
+    position: "relative",
+  },
+  welcomeLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: "#1A1826",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  welcomeLogoIcon: {
+    fontSize: 36,
+    color: "#7B9E87",
+  },
+  welcomeAIBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#C4714F",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  welcomeAIText: {
+    color: "#FFFFFF",
+    fontSize: 10,
     fontWeight: "700",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    marginBottom: 12,
   },
   welcomeTitle: {
-    fontSize: 38,
-    fontWeight: "800",
-    lineHeight: 46,
-    fontFamily: Fonts.serif,
-    marginBottom: 20,
+    fontSize: 28,
+    fontWeight: "600",
+    lineHeight: 36,
+    textAlign: "center",
+    marginBottom: 8,
   },
   welcomeBody: {
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 40,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 16,
+    maxWidth: 260,
+  },
+  privacyBadge: {
+    backgroundColor: "#EBF3EE",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 16,
+    marginBottom: 20,
+  },
+  privacyBadgeText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#3D6B50",
+  },
+  featureList: {
+    width: "100%",
+    gap: 10,
+    marginBottom: 28,
+  },
+  featureCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  featureEmoji: {
+    fontSize: 18,
+  },
+  featureText: {
+    fontSize: 13,
+  },
+  welcomeDisclaimer: {
+    fontSize: 12,
+    marginTop: 12,
+    textAlign: "center",
   },
   primaryButton: {
-    borderRadius: 14,
+    width: "100%",
+    borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
   },
   primaryButtonText: {
-    color: "#fff9f3",
-    fontSize: 17,
-    fontWeight: "700",
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
   },
   // Step header
   stepHeader: {
@@ -577,10 +689,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   stepTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    fontFamily: Fonts.serif,
-    lineHeight: 32,
+    fontSize: 22,
+    fontWeight: "600",
+    lineHeight: 28,
     marginBottom: 6,
   },
   stepSubtitle: {
@@ -590,7 +701,7 @@ const styles = StyleSheet.create({
   // Text input
   textInput: {
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 18,
@@ -601,37 +712,37 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
+    borderWidth: 2,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 10,
+    paddingVertical: 16,
+    marginBottom: 12,
   },
   optionCardInner: {
     flex: 1,
   },
   optionLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     marginBottom: 2,
   },
   optionHint: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
   },
   radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 12,
   },
   radioInner: {
-    width: 11,
-    height: 11,
-    borderRadius: 5.5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   // Chip grid
   chipGrid: {
@@ -655,18 +766,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   backButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
   },
   nextButton: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 15,
     alignItems: "center",
   },
   nextButtonText: {
-    color: "#fff9f3",
-    fontSize: 17,
-    fontWeight: "700",
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
